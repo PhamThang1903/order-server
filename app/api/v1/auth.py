@@ -13,6 +13,7 @@ async def login(
     request: LoginRequest,
     db: AsyncSession = Depends(get_db)
 ):
+    print(request)
     return await auth_service.login_with_firebase(db, request.firebase_id_token)
 
 @router.post("/refresh", response_model=TokenResponse)
