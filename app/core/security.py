@@ -1,10 +1,10 @@
 from __future__ import annotations
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-import firebase_admin
-from firebase_admin import auth, credentials
+from firebase_admin import auth
 from app.core.config import settings
 
 # Password context for refresh token hash (though we use opaque UUID hashed)
@@ -35,7 +35,6 @@ def decode_access_token(token: str) -> dict | None:
     except JWTError:
         return None
 
-import hashlib
 
 def hash_refresh_token(refresh_token: str) -> str:
     return hashlib.sha256(refresh_token.encode()).hexdigest()

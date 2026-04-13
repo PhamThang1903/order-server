@@ -1,22 +1,21 @@
 from __future__ import annotations
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.core.config import settings
 
-# Engine setup
-engine = create_async_engine(
+# Sync engine (psycopg2)
+engine = create_engine(
     settings.DATABASE_URL,
-    echo=True, # Log SQL queries
-    future=True,
+    echo=True,  # Log SQL queries
+    pool_pre_ping=True,
 )
 
-# SessionLocal setup
-AsyncSessionLocal = async_sessionmaker(
+# Sync session factory
+SessionLocal = sessionmaker(
     bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
     autocommit=False,
     autoflush=False,
+    expire_on_commit=False,
 )
 
 # Base class for all models
