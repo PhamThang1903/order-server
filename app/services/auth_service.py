@@ -19,12 +19,17 @@ async def login_with_firebase(db: AsyncSession, firebase_id_token: str) -> Token
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Firebase ID token")
 
-    stmt = select(User).where(User.firebase_uid == uid)
+    stmt = select(User).where((User.firebase_uid == uid) | (User.email == email))
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not registered. Contact admin.")
+    
+    # Link firebase_uid if missing
+    if not user.firebase_uid:
+        user.firebase_uid = uid
+        await db.commit()
     
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")

@@ -9,6 +9,8 @@ from app.core.config import settings
 from app.api.v1 import api_router
 
 from app.workers.tracking_worker import scheduler
+from app.db.init_db import init_db
+from app.db.base import AsyncSessionLocal
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -27,6 +29,11 @@ async def lifespan(app: FastAPI):
             
     # Start Scheduler
     scheduler.start()
+
+    # Seed Database
+    async with AsyncSessionLocal() as db:
+        await init_db(db)
+        
     yield
     # Shutdown Scheduler
     scheduler.shutdown()
@@ -48,7 +55,7 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-from app.db.base import AsyncSessionLocal
+
 from sqlalchemy import text
 
 @app.get("/health")
