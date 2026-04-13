@@ -2,7 +2,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_db, get_current_user
-from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse
+from app.schemas.auth import LoginRequest, RegisterRequest, RefreshRequest, TokenResponse
 from app.services import auth_service
 from app.db.models.user import User
 
@@ -15,6 +15,14 @@ def login(
     db: Session = Depends(get_db),
 ):
     return auth_service.login_with_firebase(db, request.firebase_id_token)
+
+
+@router.post("/register", response_model=TokenResponse)
+def register(
+    request: RegisterRequest,
+    db: Session = Depends(get_db),
+):
+    return auth_service.register_with_firebase(db, request)
 
 
 @router.post("/refresh", response_model=TokenResponse)

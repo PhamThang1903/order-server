@@ -4,6 +4,12 @@ from pydantic import BaseModel
 class LoginRequest(BaseModel):
     firebase_id_token: str
 
+class RegisterRequest(BaseModel):
+    firebase_id_token: str
+    name: str
+    email: str
+    role: str
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.security import create_access_token, hash_refresh_token
 from app.db.models.user import User
 from app.db.models.refresh_token import RefreshToken
-from app.schemas.auth import TokenResponse
+from app.schemas.auth import TokenResponse, RegisterRequest
 
 
 def login_with_firebase(db: Session, firebase_id_token: str) -> TokenResponse:
@@ -34,6 +34,47 @@ def login_with_firebase(db: Session, firebase_id_token: str) -> TokenResponse:
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
 
+    return _issue_tokens(db, user)
+
+
+def register_with_firebase(db: Session, request: RegisterRequest) -> TokenResponse:
+    try:
+        decoded_token = auth.verify_id_token(request.firebase_id_token)
+        uid = decoded_token.get("uid")
+        token_email = decoded_token.get("email")
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Firebase ID token")
+
+    # Safety: ensure email in token matches email in request
+    if token_email and token_email != request.email:
+         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email mismatch")
+
+    stmt = select(User).where((User.firebase_uid == uid) | (User.email == request.email))
+    user = db.execute(stmt).scalar_one_or_none()
+
+    if not user:
+        # Create new user
+        user = User(
+            firebase_uid=uid,
+            email=request.email,
+            name=request.name,
+            role=request.role if request.role in ["admin", "customer"] else "customer",
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        # Update existing user if necessary (e.g. link uid)
+        if not user.firebase_uid:
+            user.firebase_uid = uid
+            db.commit()
+            db.refresh(user)
+
+    return _issue_tokens(db, user)
+
+
+def _issue_tokens(db: Session, user: User) -> TokenResponse:
     # Issue tokens
     access_token = create_access_token(subject=user.id)
 
