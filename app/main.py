@@ -3,6 +3,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
 from firebase_admin import credentials
+import logging
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 from app.core.config import settings
 from app.api.v1 import api_router
@@ -24,8 +32,9 @@ def lifespan_startup():
         try:
             cred = credentials.Certificate(settings.FIREBASE_SERVICE_ACCOUNT_JSON)
             firebase_admin.initialize_app(cred)
+            logger.info("Firebase Admin initialized successfully")
         except Exception as e:
-            print(f"Firebase Admin init failed: {e}")
+            logger.error(f"Firebase Admin init failed: {e}")
 
     # Start Scheduler
     scheduler.start()
@@ -34,15 +43,17 @@ def lifespan_startup():
     try:
         create_database_if_not_exists()
     except Exception as e:
-        print(f"Database creation/check failed: {e}")
+        logger.error(f"Database creation/check failed: {e}")
 
-    # Create tables if they don't exist yet (dev convenience; use Alembic in prod)
+    # Create tables
+    logger.info("Creating tables if they don't exist...")
     Base.metadata.create_all(bind=engine)
 
     # Seed default data
     db = SessionLocal()
     try:
         init_db(db)
+        logger.info("Database seeding completed")
     finally:
         db.close()
 

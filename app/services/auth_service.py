@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import uuid
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from fastapi import HTTPException, status
@@ -11,14 +12,20 @@ from app.db.models.user import User
 from app.db.models.refresh_token import RefreshToken
 from app.schemas.auth import TokenResponse, RegisterRequest
 
+logger = logging.getLogger(__name__)
+
 
 def login_with_firebase(db: Session, firebase_id_token: str) -> TokenResponse:
     try:
         decoded_token = auth.verify_id_token(firebase_id_token)
         uid = decoded_token.get("uid")
         email = decoded_token.get("email")
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Firebase ID token")
+    except Exception as e:
+        logger.error(f"Firebase token verification failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail=f"Invalid Firebase ID token: {str(e)}"
+        )
 
     stmt = select(User).where((User.firebase_uid == uid) | (User.email == email))
     user = db.execute(stmt).scalar_one_or_none()
@@ -42,8 +49,12 @@ def register_with_firebase(db: Session, request: RegisterRequest) -> TokenRespon
         decoded_token = auth.verify_id_token(request.firebase_id_token)
         uid = decoded_token.get("uid")
         token_email = decoded_token.get("email")
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Firebase ID token")
+    except Exception as e:
+        logger.error(f"Firebase registration token verification failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail=f"Invalid Firebase ID token: {str(e)}"
+        )
 
     # Safety: ensure email in token matches email in request
     if token_email and token_email != request.email:
