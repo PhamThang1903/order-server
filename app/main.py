@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
@@ -25,10 +26,10 @@ from sqlalchemy import text
 
 limiter = Limiter(key_func=get_remote_address)
 
-
-def lifespan_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     # Initialize Firebase Admin
-    if settings.FIREBASE_SERVICE_ACCOUNT_JSON:
+    if not firebase_admin._apps:
         try:
             cred = credentials.Certificate(settings.FIREBASE_SERVICE_ACCOUNT_JSON)
             firebase_admin.initialize_app(cred)
@@ -57,12 +58,13 @@ def lifespan_startup():
     finally:
         db.close()
 
+    yield
 
-def lifespan_shutdown():
+    # Shutdown logic
     scheduler.shutdown()
 
 
-app = FastAPI(title=settings.PROJECT_NAME, on_startup=[lifespan_startup], on_shutdown=[lifespan_shutdown])
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
