@@ -31,6 +31,12 @@ async def lifespan(app: FastAPI):
     scheduler.start()
 
     # Seed Database
+    try:
+        from app.db.init_db import create_database_if_not_exists
+        await create_database_if_not_exists()
+    except Exception as e:
+        print(f"Database creation/check failed (might already exist or auth error): {e}")
+
     async with AsyncSessionLocal() as db:
         await init_db(db)
         
