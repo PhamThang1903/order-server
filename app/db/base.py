@@ -6,7 +6,7 @@ from app.core.config import settings
 # Sync engine (psycopg2)
 engine = create_engine(
     settings.DATABASE_URL,
-    echo=True,  # Log SQL queries
+    echo=False,  # Database logging disabled
     pool_pre_ping=True,
 )
 
